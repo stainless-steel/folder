@@ -74,7 +74,7 @@ where
     let mut count = 0;
     for entry in WalkDir::new(path)
         .into_iter()
-        .map(|entry| entry.unwrap())
+        .filter_map(|entry| entry.ok())
         .filter(|entry| !entry.file_type().is_dir())
         .filter(|entry| filter(entry.path()))
     {
@@ -94,4 +94,14 @@ where
 {
     let result = map(&path, parameter);
     (path, result)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    #[test]
+    fn nonexistent() {
+        super::scan(Path::new("foo"), |_| true, |_, _| Ok(true), (), 1);
+    }
 }
