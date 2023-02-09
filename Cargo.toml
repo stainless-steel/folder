@@ -1,0 +1,15 @@
+[package]
+name = "folder"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0/MIT"
+authors = ["Ivan Ukhov <ivan.ukhov@gmail.com>"]
+description = "The package allows for scanning directories in parallel."
+documentation = "https://docs.rs/folder"
+homepage = "https://github.com/bodoni/stainless-steel/folder"
+repository = "https://github.com/stainless-steel/folder"
+categories = ["filesystem"]
+keywords = ["directory", "parallel", "recursive", "scan", "walk"]
+
+[dependencies]
+walkdir = "2.3"
