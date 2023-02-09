@@ -7,17 +7,15 @@ The package allows for scanning directories in parallel.
 ```rust
 use std::path::Path;
 
-let results = folder::scan(
+let results: Vec<_> = folder::scan(
     Path::new("src"),
     |path| true,
     |path, _| Ok(path.exists()),
     (),
     1,
-);
-assert_eq!(
-    format!("{results:?}"),
-    r#"[("src/lib.rs", Ok(true))]"#,
-);
+)
+.collect();
+assert_eq!(format!("{results:?}"), r#"[("src/lib.rs", Ok(true))]"#);
 ```
 
 ## Contribution

@@ -26,17 +26,15 @@ use walkdir::WalkDir;
 /// ```
 /// use std::path::Path;
 ///
-/// let results = folder::scan(
+/// let results: Vec<_> = folder::scan(
 ///     Path::new("src"),
 ///     |path| true,
 ///     |path, _| Ok(path.exists()),
 ///     (),
 ///     1,
-/// );
-/// assert_eq!(
-///     format!("{results:?}"),
-///     r#"[("src/lib.rs", Ok(true))]"#,
-/// );
+/// )
+/// .collect();
+/// assert_eq!(format!("{results:?}"), r#"[("src/lib.rs", Ok(true))]"#);
 /// ```
 pub fn scan<F1, F2, T, U>(
     path: &Path,
@@ -44,7 +42,7 @@ pub fn scan<F1, F2, T, U>(
     map: F2,
     parameter: T,
     workers: usize,
-) -> Vec<(PathBuf, Result<U>)>
+) -> impl Iterator<Item = (PathBuf, Result<U>)> + DoubleEndedIterator
 where
     F1: Fn(&Path) -> bool,
     F2: Fn(&Path, T) -> Result<U> + Copy + Send + 'static,
@@ -81,9 +79,7 @@ where
         forward_sender.send(entry.path().into()).unwrap();
         count += 1;
     }
-    (0..count)
-        .map(|_| backward_receiver.recv().unwrap())
-        .collect()
+    (0..count).map(move |_| backward_receiver.recv().unwrap())
 }
 
 fn wrap<F, T, U>(path: PathBuf, map: F, parameter: T) -> (PathBuf, Result<U>)
@@ -102,6 +98,6 @@ mod tests {
 
     #[test]
     fn nonexistent() {
-        super::scan(Path::new("foo"), |_| true, |_, _| Ok(true), (), 1);
+        let _: Vec<_> = super::scan(Path::new("foo"), |_| true, |_, _| Ok(true), (), 1).collect();
     }
 }
