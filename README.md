@@ -5,10 +5,8 @@ The package allows for scanning directories in parallel.
 ## Example
 
 ```rust
-use std::path::Path;
-
 let results: Vec<_> = folder::scan(
-    Path::new("src"),
+    "src",
     |path| true,
     |path, _| Ok(path.exists()),
     (),

@@ -24,10 +24,8 @@ use walkdir::WalkDir;
 /// # Examples
 ///
 /// ```
-/// use std::path::Path;
-///
 /// let results: Vec<_> = folder::scan(
-///     Path::new("src"),
+///     "src",
 ///     |path| true,
 ///     |path, _| Ok(path.exists()),
 ///     (),
@@ -36,21 +34,22 @@ use walkdir::WalkDir;
 /// .collect();
 /// assert_eq!(format!("{results:?}"), r#"[("src/lib.rs", Ok(true))]"#);
 /// ```
-pub fn scan<F1, F2, T, U>(
-    path: &Path,
+pub fn scan<T, F1, F2, U, V>(
+    path: T,
     filter: F1,
     map: F2,
-    parameter: T,
+    parameter: U,
     workers: usize,
-) -> impl Iterator<Item = (PathBuf, Result<U>)> + DoubleEndedIterator
+) -> impl Iterator<Item = (PathBuf, Result<V>)> + DoubleEndedIterator
 where
+    T: AsRef<Path>,
     F1: Fn(&Path) -> bool,
-    F2: Fn(&Path, T) -> Result<U> + Copy + Send + 'static,
-    T: Clone + Send + 'static,
-    U: Send + 'static,
+    F2: Fn(&Path, U) -> Result<V> + Copy + Send + 'static,
+    U: Clone + Send + 'static,
+    V: Send + 'static,
 {
     let (forward_sender, forward_receiver) = mpsc::channel::<PathBuf>();
-    let (backward_sender, backward_receiver) = mpsc::channel::<(PathBuf, Result<U>)>();
+    let (backward_sender, backward_receiver) = mpsc::channel::<(PathBuf, Result<V>)>();
     let forward_receiver = Arc::new(Mutex::new(forward_receiver));
 
     let _: Vec<_> = (0..workers)
