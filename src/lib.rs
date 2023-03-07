@@ -8,9 +8,50 @@ use std::thread;
 
 use walkdir::WalkDir;
 
-/// Scan a directory in parallel.
+/// Process an iterator in parallel.
+pub fn parallelize<I, M, E, C, V>(
+    iterator: I,
+    map: M,
+    context: C,
+    workers: usize,
+) -> impl Iterator<Item = (E, Result<V>)> + DoubleEndedIterator
+where
+    I: Iterator<Item = E>,
+    M: Fn(&E, C) -> Result<V> + Copy + Send + 'static,
+    E: Send + 'static,
+    C: Clone + Send + 'static,
+    V: Send + 'static,
+{
+    let (forward_sender, forward_receiver) = mpsc::channel::<E>();
+    let (backward_sender, backward_receiver) = mpsc::channel::<(E, Result<V>)>();
+    let forward_receiver = Arc::new(Mutex::new(forward_receiver));
+
+    let _: Vec<_> = (0..workers)
+        .map(|_| {
+            let forward_receiver = forward_receiver.clone();
+            let backward_sender = backward_sender.clone();
+            let context = context.clone();
+            thread::spawn(move || loop {
+                let entry = match forward_receiver.lock().unwrap().recv() {
+                    Ok(entry) => entry,
+                    Err(_) => break,
+                };
+                let result = map(&entry, context.clone());
+                backward_sender.send((entry, result)).unwrap();
+            })
+        })
+        .collect();
+    let mut count = 0;
+    for entry in iterator {
+        forward_sender.send(entry).unwrap();
+        count += 1;
+    }
+    (0..count).map(move |_| backward_receiver.recv().unwrap())
+}
+
+/// Process a path in parallel.
 ///
-/// The function traverses files in a directory, selects those satisfying a criterion, and
+/// The function traverses files in a given path, selects those satisfying a criterion, and
 /// processes the chosen ones in parallel, returning the corresponding results.
 ///
 /// # Arguments
@@ -18,7 +59,7 @@ use walkdir::WalkDir;
 /// * `path` is the location to scan;
 /// * `filter` is a function for choosing files, which is be invoked sequentially;
 /// * `map` is a function for processing files, which is be invoked in parallel;
-/// * `parameter` is a parameter passed to the processing function; and
+/// * `context` is an context passed to the processing function; and
 /// * `workers` is the number of threads to use.
 ///
 /// # Examples
@@ -34,61 +75,31 @@ use walkdir::WalkDir;
 /// .collect();
 /// assert_eq!(format!("{results:?}"), r#"[("src/lib.rs", Ok(true))]"#);
 /// ```
-pub fn scan<T, F1, F2, U, V>(
-    path: T,
-    filter: F1,
-    map: F2,
-    parameter: U,
+pub fn scan<P, F, M, C, V>(
+    path: P,
+    filter: F,
+    map: M,
+    context: C,
     workers: usize,
 ) -> impl Iterator<Item = (PathBuf, Result<V>)> + DoubleEndedIterator
 where
-    T: AsRef<Path>,
-    F1: Fn(&Path) -> bool,
-    F2: Fn(&Path, U) -> Result<V> + Copy + Send + 'static,
-    U: Clone + Send + 'static,
+    P: AsRef<Path>,
+    F: Fn(&Path) -> bool + Copy,
+    M: Fn(&PathBuf, C) -> Result<V> + Copy + Send + 'static,
+    C: Clone + Send + 'static,
     V: Send + 'static,
 {
-    let (forward_sender, forward_receiver) = mpsc::channel::<PathBuf>();
-    let (backward_sender, backward_receiver) = mpsc::channel::<(PathBuf, Result<V>)>();
-    let forward_receiver = Arc::new(Mutex::new(forward_receiver));
-
-    let _: Vec<_> = (0..workers)
-        .map(|_| {
-            let forward_receiver = forward_receiver.clone();
-            let backward_sender = backward_sender.clone();
-            let parameter = parameter.clone();
-            thread::spawn(move || loop {
-                let path = match forward_receiver.lock().unwrap().recv() {
-                    Ok(path) => path,
-                    Err(_) => break,
-                };
-                backward_sender
-                    .send(wrap(path, map, parameter.clone()))
-                    .unwrap();
-            })
-        })
-        .collect();
-    let mut count = 0;
-    for entry in WalkDir::new(path)
-        .into_iter()
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| !entry.file_type().is_dir())
-        .filter(|entry| filter(entry.path()))
-    {
-        forward_sender.send(entry.path().into()).unwrap();
-        count += 1;
-    }
-    (0..count).map(move |_| backward_receiver.recv().unwrap())
-}
-
-fn wrap<F, T, U>(path: PathBuf, map: F, parameter: T) -> (PathBuf, Result<U>)
-where
-    F: Fn(&Path, T) -> Result<U> + Copy + Send + 'static,
-    T: Clone + Send + 'static,
-    U: Send + 'static,
-{
-    let result = map(&path, parameter);
-    (path, result)
+    parallelize(
+        WalkDir::new(path)
+            .into_iter()
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| !entry.file_type().is_dir())
+            .filter(move |entry| filter(entry.path()))
+            .map(|entry| entry.path().to_owned()),
+        map,
+        context,
+        workers,
+    )
 }
 
 #[cfg(test)]
