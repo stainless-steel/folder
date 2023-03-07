@@ -1,6 +1,7 @@
 //! Scanning directories in parallel.
 
 use std::io::Result;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -85,7 +86,7 @@ pub fn scan<P, F, M, C, V>(
 where
     P: AsRef<Path>,
     F: Fn(&Path) -> bool + Copy,
-    M: Fn(&PathBuf, C) -> Result<V> + Copy + Send + 'static,
+    M: Fn(&Path, C) -> Result<V> + Copy + Send + 'static,
     C: Clone + Send + 'static,
     V: Send + 'static,
 {
@@ -96,7 +97,7 @@ where
             .filter(|entry| !entry.file_type().is_dir())
             .filter(move |entry| filter(entry.path()))
             .map(|entry| entry.path().to_owned()),
-        map,
+        move |path, context| map(path.deref(), context),
         context,
         workers,
     )
