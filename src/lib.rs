@@ -92,6 +92,7 @@ where
 {
     parallelize(
         WalkDir::new(path)
+            .follow_links(true)
             .into_iter()
             .filter_map(|entry| entry.ok())
             .filter(|entry| !entry.file_type().is_dir())
