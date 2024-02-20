@@ -1,6 +1,6 @@
 [package]
 name = "folder"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2021"
 license = "Apache-2.0/MIT"
 authors = ["Ivan Ukhov <ivan.ukhov@gmail.com>"]
@@ -12,4 +12,5 @@ categories = ["filesystem"]
 keywords = ["directory", "parallel", "recursive", "scan", "walk"]
 
 [dependencies]
+loop = "0.1"
 walkdir = "2.3"
