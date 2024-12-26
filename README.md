@@ -2,14 +2,31 @@
 
 The package allows for scanning directories in parallel.
 
-## Example
+## Examples
+
+Synchronously:
 
 ```rust
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-let filter = |_: &Path| true;
-let map = |path: &Path, _| Ok(path.exists());
-let (paths, results): (Vec<_>, Vec<_>) = folder::scan("src", filter, map, (), None).unzip();
+let filter = |path: &Path| path.ends_with(".rs");
+let map = |path: PathBuf, _| path.metadata().unwrap().len();
+let _ = folder::scan("src", filter, map, ())
+    .fold(0, |sum, value| sum + value);
+```
+
+Asynchronously:
+
+```rust
+use std::path::{Path, PathBuf};
+
+use futures::stream::StreamExt;
+
+let filter = |path: &Path| path.ends_with(".rs");
+let map = |path: PathBuf, _| async move { path.metadata().unwrap().len() };
+let _ = folder::scan("src", filter, map, ())
+    .fold(0, |sum, value| async move { sum + value })
+    .await;
 ```
 
 ## Contribution

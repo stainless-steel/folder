@@ -1,6 +1,6 @@
 [package]
 name = "folder"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 license = "Apache-2.0/MIT"
 authors = ["Ivan Ukhov <ivan.ukhov@gmail.com>"]
@@ -11,6 +11,13 @@ repository = "https://github.com/stainless-steel/folder"
 categories = ["filesystem"]
 keywords = ["directory", "parallel", "recursive", "scan", "walk"]
 
+[features]
+asynchronous = ["futures", "loop/asynchronous"]
+
 [dependencies]
-loop = "0.1"
-walkdir = "2.3"
+futures = { version = "0.3", default-features = false, optional = true }
+loop = "0.3.1"
+walkdir = "2.5"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros"] }
