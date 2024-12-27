@@ -9,10 +9,12 @@ Synchronously:
 ```rust
 use std::path::{Path, PathBuf};
 
+use folder::scan;
+
 let filter = |path: &Path| path.ends_with(".rs");
 let map = |path: PathBuf, _| path.metadata().unwrap().len();
-let _ = folder::scan("src", filter, map, ())
-    .fold(0, |sum, value| sum + value);
+let fold = |sum, value| sum + value;
+let _ = scan("src", filter, map, ()).fold(0, fold);
 ```
 
 Asynchronously:
@@ -20,13 +22,13 @@ Asynchronously:
 ```rust
 use std::path::{Path, PathBuf};
 
+use folder::asynchronous::scan;
 use futures::stream::StreamExt;
 
 let filter = |path: &Path| path.ends_with(".rs");
 let map = |path: PathBuf, _| async move { path.metadata().unwrap().len() };
-let _ = folder::scan("src", filter, map, ())
-    .fold(0, |sum, value| async move { sum + value })
-    .await;
+let fold = |sum, value| async move { sum + value };
+let _ = scan("src", filter, map, ()).fold(0, fold).await;
 ```
 
 ## Contribution

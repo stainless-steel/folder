@@ -1,7 +1,20 @@
+//! Synchronous implementation.
+
 use std::path::{Path, PathBuf};
 
 use walkdir::WalkDir;
 
+/// Process a path in parallel.
+///
+/// The function traverses files in a given path, selects those satisfying a criterion, and
+/// processes the chosen ones in parallel, returning the corresponding results.
+///
+/// # Arguments
+///
+/// * `path` is the location to scan;
+/// * `filter` is a function for choosing files, which is be invoked sequentially;
+/// * `map` is a function for processing files, which is be invoked in parallel; and
+/// * `context` is an context passed to the processing function.
 pub fn scan<Root, Filter, Map, Context, Output>(
     root: Root,
     mut filter: Filter,
@@ -36,6 +49,7 @@ mod tests {
     fn scan() {
         let filter = |path: &Path| path.ends_with(".rs");
         let map = |path: PathBuf, _| path.metadata().unwrap().len();
-        let _ = super::scan("src", filter, map, ()).fold(0, |sum, value| sum + value);
+        let fold = |sum, value| sum + value;
+        let _ = super::scan("src", filter, map, ()).fold(0, fold);
     }
 }
