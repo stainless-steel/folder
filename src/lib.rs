@@ -13,7 +13,7 @@
 //!     let filter = |path: &Path| path.ends_with(".rs");
 //!     let map = |path: PathBuf, _| path.metadata().unwrap().len();
 //!     let fold = |sum, value| sum + value;
-//!     let _ = scan("src", filter, map, ()).fold(0, fold);
+//!     let _ = scan("src", filter, map, (), None).fold(0, fold);
 //! }
 //!```
 //!
@@ -31,7 +31,7 @@
 //!     let filter = |path: &Path| path.ends_with(".rs");
 //!     let map = |path: PathBuf, _| async move { path.metadata().unwrap().len() };
 //!     let fold = |sum, value| async move { sum + value };
-//!     let _ = scan("src", filter, map, ()).fold(0, fold).await;
+//!     let _ = scan("src", filter, map, (), None).fold(0, fold).await;
 //! }
 //! # #[cfg(not(feature = "asynchronous"))]
 //! # fn main() {}

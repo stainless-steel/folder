@@ -13,13 +13,15 @@ use walkdir::WalkDir;
 ///
 /// * `path` is the location to scan;
 /// * `filter` is a function for choosing files, which is be invoked sequentially;
-/// * `map` is a function for processing files, which is be invoked in parallel; and
-/// * `context` is an context passed to the processing function.
+/// * `map` is a function for processing files, which is be invoked in parallel;
+/// * `context` is an context passed to the processing function; and
+/// * `workers` is the number of workers to use.
 pub fn scan<Root, Filter, Map, Context, Future, Output>(
     root: Root,
     mut filter: Filter,
     mut map: Map,
     context: Context,
+    workers: Option<usize>,
 ) -> impl futures::stream::Stream<Item = Output>
 where
     Root: AsRef<Path>,
@@ -39,6 +41,7 @@ where
     r#loop::asynchronous::parallelize(
         paths.zip(std::iter::repeat(context)),
         move |(path, context)| map(path, context),
+        workers,
     )
 }
 
@@ -53,6 +56,8 @@ mod tests {
         let filter = |path: &Path| path.ends_with(".rs");
         let map = |path: PathBuf, _| async move { path.metadata().unwrap().len() };
         let fold = |sum, value| async move { sum + value };
-        let _ = super::scan("src", filter, map, ()).fold(0, fold).await;
+        let _ = super::scan("src", filter, map, (), None)
+            .fold(0, fold)
+            .await;
     }
 }
